@@ -1,23 +1,48 @@
 pull_request_rules:
-  - name: automatic merge on CI success
+  - name: Add community label to outside contributions
     conditions:
-      - status-success=continuous-integration/travis-ci/pr
-      - label=automerge
+      - author≠@core-contributors
+      - author≠@spl-maintainers
+      - author≠@spl-triage
+      - author≠@spl-write
+      - author≠mergify[bot]
+      - author≠dependabot[bot]
+      - author≠github-actions[bot]
+    actions:
+      label:
+        add:
+          - community
+  - name: Automatic merge (squash) on CI success
+    conditions:
+      - and:
+          - or:
+              - and:
+                  - base=maintenance/v1.x
+                  - and:
+                      - status-success~=^Lint, Build, and Test
+                      - status-success="Validate commit message"
+              - and:
+                  - base!=maintenance/v1.x
+                  - status-success=all-web3-checks
+          - label=automerge
+          - label!=no-automerge
     actions:
       merge:
-        method: rebase
-        strict: true
-  - name: remove automerge label on CI failure
+        method: squash
+  - name: Remove automerge label on CI failure
     conditions:
-      - status-failure=continuous-integration/travis-ci/pr
       - label=automerge
+      - '#status-failure!=0'
     actions:
       label:
         remove:
           - automerge
-  - name: remove outdated reviews
+      comment:
+        message: Automerge label removed due to a CI failure
+
+commands_restrictions:
+  # The author of copied PRs is the Mergify user.
+  # Restrict `copy` access to Core Contributors
+  copy:
     conditions:
-      - base=master
-    actions:
-      dismiss_reviews:
-        changes_requested: true
+      - author=@core-contributors
